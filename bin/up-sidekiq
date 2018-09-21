@@ -1,0 +1,19 @@
+#!/bin/bash
+set -e
+
+bundle check || bundle install
+
+directory="$APP_LOCATION/tmp/pids"
+file="$directory/sidekiq.pid"
+
+if [ ! -d $directory ]
+then
+  mkdir $directory
+  echo "Make a directory $directory"
+elif [ -e $file ]
+then
+  rm $file
+  echo "Remove the file $file"
+fi
+
+bundle exec sidekiq -C config/sidekiq.yml

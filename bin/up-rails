@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+bundle check || bundle install
+
+directory="$APP_LOCATION/tmp/pids"
+file="$directory/server.pid"
+
+if [[ -d $directory && -e $file ]]
+then
+  rm $file
+  echo "Remove the file $file"
+fi
+
+bundle exec rails server -b 0.0.0.0

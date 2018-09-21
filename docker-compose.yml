@@ -1,0 +1,79 @@
+version: "3.2"
+services:
+
+  db:
+    image: mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "${MONGO_USER}"
+      MONGO_INITDB_ROOT_PASSWORD: "${MONGO_PASSWORD}"
+    volumes:
+      - 'mongo:/data/db'
+  web:
+    build:
+      context: .
+      args:
+        image_name: "${IMAGE_NAME}"
+    image: "${IMAGE_NAME}"
+    ports:
+      - "${RAILS_PORT}:3000"
+    volumes:
+      - .:/rails_app
+    depends_on:
+      - db
+      - redis
+      - webpacker
+    links:
+      - maildev
+    command: ./bin/up-rails
+    stdin_open: true
+    tty: true
+    environment:
+      JOB_WORKER_URL: redis://redis:6379/0
+      RAILS_PORT: $RAILS_PORT
+  webpacker:
+    build:
+      context: .
+      args:
+        image_name: "${IMAGE_NAME}"
+    image: "${IMAGE_NAME}"
+    env_file:
+      - '.env'
+    command: ./bin/webpack-dev-server
+    volumes:
+      - .:/rails_app
+    ports:
+      - '3035:3035'
+  sidekiq:
+    build:
+      context: .
+      args:
+        image_name: "${IMAGE_NAME}"
+    command: ./bin/up-sidekiq
+    image: "${IMAGE_NAME}"
+    volumes:
+      - .:/rails_app
+    depends_on:
+      - db
+      - redis
+    environment:
+      JOB_WORKER_URL: redis://redis:6379/0
+  adminer:
+    image: adminer:4.3.1
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+  maildev:
+    image: djfarrelly/maildev:1.0.0-rc2
+    ports:
+      - "${WEBMAIL_PORT}:80"
+
+  redis:
+    image: "redis:3.2"
+    volumes:
+      - 'redis:/var/lib/redis/data'
+volumes:
+  mongo:
+  redis:
