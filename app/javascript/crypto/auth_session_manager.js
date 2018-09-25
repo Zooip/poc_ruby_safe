@@ -5,15 +5,13 @@ import DeterministicRsaKeyPairGenerator
 
 class AuthSessionManager {
 
-  constructor(password, salt, challenge, passwordDerivationParams = {}, rsaKeyPairGeneratorParams = {}) {
+  constructor(password, salt, challenge, initialisationVector, passwordDerivationParams = {}, rsaKeyPairGeneratorParams = {}) {
     this.password = password;
     this.salt = salt;
     this.challenge = challenge;
+    this.initialisationVector=initialisationVector;
     this.passwordDerivationParams = passwordDerivationParams;
     this.rsaKeyPairGeneratorParams = rsaKeyPairGeneratorParams;
-
-    this._keypairPromise = null;
-    this._signaturePromise = null;
   }
 
   keypairPromise() {
@@ -62,6 +60,36 @@ class AuthSessionManager {
       console.log(reason);
     });
     return this._signaturePromise;
+  }
+
+  masterKeyPromise(){
+    if (this._masterKeyPromise) {
+      return this._masterKeyPromise
+    }
+
+    this._masterKeyPromise=new Promise(function(resolve){
+      resolve(forge.random.getBytesSync(32));
+    });
+
+    return this._masterKeyPromise
+  }
+
+  encryptedMasterKeyPromise(){
+    if (this._encryptedMasterKeyPromise) {
+      return this._encryptedMasterKeyPromise
+    }
+
+    this._encryptedMasterKeyPromise=Promise.all([this.masterKeyPromise(), this.keypairPromise()]).then(function(values){
+      let [masterKey, keypair] = values;
+
+      return new Promise(function (resolve) {
+        resolve(keypair.publicKey.encrypt(masterKey,'RSA-OAEP', {
+          md: forge.md.sha256.create()
+        }));
+      });
+    }, (reason) => (console.log(reason)));
+
+    return this._encryptedMasterKeyPromise
   }
 
 }

@@ -25,6 +25,18 @@
       <h3>Challenge Signature</h3>
       {{encodedSignature}}
     </div>
+    <div>
+      <h3>Random AES-256 Master key</h3>
+      {{encodedMasterKey}}
+    </div>
+    <div>
+      <h3>Encrypted Master key</h3>
+      {{encodedEncryptedMasterKey}}
+    </div>
+    <div>
+      <h3>Decrypted Master key</h3>
+      {{encodedDecryptedMasterKey}}
+    </div>
   </div>
 </template>
 
@@ -41,7 +53,8 @@
       return {
         password: "SomePassword",
         salt: forge.random.getBytesSync(64),
-        challenge: "Sign me !"
+        challenge: "Sign me !",
+        initialisationVector: forge.random.getBytesSync(32)
       }
     },
     computed: {
@@ -49,7 +62,7 @@
         return forge.util.bytesToHex(this.salt)
       },
       authSessionManager(){
-        return new AuthSessionManager(this.password, this.salt, this.challenge);
+        return new AuthSessionManager(this.password, this.salt, this.challenge, this.initialisationVector);
       }
     },
     asyncComputed:{
@@ -61,6 +74,20 @@
       },
       encodedSignature(){
         return this.authSessionManager.signaturePromise().then((signBytes) => (forge.util.bytesToHex(signBytes)),(reason => (console.log(reason))))
+      },
+      encodedMasterKey(){
+        return this.authSessionManager.masterKeyPromise().then((signBytes) => (forge.util.bytesToHex(signBytes)),(reason => (console.log(reason))))
+      },
+      encodedEncryptedMasterKey(){
+        return this.authSessionManager.encryptedMasterKeyPromise().then((signBytes) => (forge.util.bytesToHex(signBytes)),(reason => (console.log(reason))))
+      },
+      encodedDecryptedMasterKey(){
+        return Promise.all([this.authSessionManager.keypairPromise(), this.authSessionManager.encryptedMasterKeyPromise()]).then(function (values) {
+          let [keypair, encrypted] = values;
+          return forge.util.bytesToHex(keypair.privateKey.decrypt(encrypted, 'RSA-OAEP', {
+            md: forge.md.sha256.create()
+          }));
+        });
       }
     },
     // watch: {
