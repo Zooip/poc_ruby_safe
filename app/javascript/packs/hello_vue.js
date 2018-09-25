@@ -7,6 +7,9 @@
 
 import Vue from 'vue'
 import App from '../app.vue'
+import AsyncComputed from 'vue-async-computed'
+
+Vue.use(AsyncComputed);
 
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.body.appendChild(document.createElement('hello'))

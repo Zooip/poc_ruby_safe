@@ -1,22 +1,85 @@
 <template>
   <div id="app">
-    <p>{{ message }}</p>
+    <h1>POC Deterministic RSA key pair generation</h1>
+    <div>
+      Password :
+      <input v-model="password">
+    </div>
+    <div>
+      Challenge :
+      <input v-model="challenge">
+    </div>
+    <div>
+      <h3>Random Salt</h3>
+      {{encodedSalt}}
+    </div>
+    <div>
+      <h3>RSA Public key</h3>
+      {{publicKeyPem}}
+    </div>
+    <div>
+      <h3>RSA Private key</h3>
+      {{privateKeyPem}}
+    </div>
+    <div>
+      <h3>Challenge Signature</h3>
+      {{encodedSignature}}
+    </div>
   </div>
 </template>
 
 <script>
-export default {
-  data: function () {
-    return {
-      message: "Hello Vue!"
-    }
-  }
+
+  import forge from "node-forge"
+  import AuthSessionManager from './crypto/auth_session_manager'
+
+  console.log(forge);
+
+  export default {
+    data: function () {
+      console.log("App Component :",this);
+      return {
+        password: "SomePassword",
+        salt: forge.random.getBytesSync(64),
+        challenge: "Sign me !"
+      }
+    },
+    computed: {
+      encodedSalt(){
+        return forge.util.bytesToHex(this.salt)
+      },
+      authSessionManager(){
+        return new AuthSessionManager(this.password, this.salt, this.challenge);
+      }
+    },
+    asyncComputed:{
+      publicKeyPem: function(){
+        return this.authSessionManager.keypairPromise().then((keypair) => (forge.pki.publicKeyToPem(keypair.publicKey)),(reason => (console.log(reason))))
+      },
+      privateKeyPem: function(){
+        return this.authSessionManager.keypairPromise().then((keypair) => (forge.pki.privateKeyToPem(keypair.privateKey)),(reason => (console.log(reason))))
+      },
+      encodedSignature(){
+        return this.authSessionManager.signaturePromise().then((signBytes) => (forge.util.bytesToHex(signBytes)),(reason => (console.log(reason))))
+      }
+    },
+    // watch: {
+    //   password: function(val){
+    //     let _this=this;
+    //     crypto.passwordToRsaKeyPairPromise(val, this.salt).then(function(keypair){
+    //       console.log("set data !");
+    //       console.log(keypair);
+    //       _this.privateKey=keypair.privateKey;
+    //       _this.publicKey=keypair.publicKey;
+    //     })
+    //   }
+    // }
 }
 </script>
 
 <style scoped>
-p {
-  font-size: 2em;
-  text-align: center;
+div {
+  word-wrap:break-word;
 }
 </style>
+
