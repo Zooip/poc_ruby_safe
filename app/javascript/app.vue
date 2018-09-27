@@ -1,45 +1,6 @@
 <template>
   <div id="app">
     <login></login>
-
-    <!--<h1>POC Deterministic RSA key pair generation</h1>-->
-    <!--<div>-->
-      <!--Password :-->
-      <!--<input v-model="password">-->
-    <!--</div>-->
-    <!--<div>-->
-      <!--Challenge :-->
-      <!--<input v-model="challenge">-->
-    <!--</div>-->
-    <!--<div>-->
-      <!--<h3>Random Salt</h3>-->
-      <!--{{encodedSalt}}-->
-    <!--</div>-->
-    <!--<div>-->
-      <!--<h3>RSA Public key</h3>-->
-      <!--{{publicKeyPem}}-->
-    <!--</div>-->
-    <!--<div>-->
-      <!--<h3>RSA Private key</h3>-->
-      <!--{{privateKeyPem}}-->
-    <!--</div>-->
-    <!--<div>-->
-      <!--<h3>Challenge Signature</h3>-->
-      <!--{{encodedSignature}}-->
-    <!--</div>-->
-    <!--<div>-->
-      <!--<h3>Random AES-256 Master key</h3>-->
-      <!--{{encodedMasterKey}}-->
-    <!--</div>-->
-    <!--<div>-->
-      <!--<h3>Encrypted Master key</h3>-->
-      <!--{{encodedEncryptedMasterKey}}-->
-    <!--</div>-->
-    <!--<div>-->
-      <!--<h3>Decrypted Master key</h3>-->
-      <!--{{encodedDecryptedMasterKey}}-->
-    <!--</div>-->
-
   </div>
 </template>
 

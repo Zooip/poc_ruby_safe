@@ -12,6 +12,12 @@
                         icon="ti-user"
                         transition="fade"
                         :before-change="afterIdentTab">
+                    <p>
+                      Provide your ID so we can retrieve your key derivation parameters and assign you a challenge.
+                    </p>
+                    <p>
+                        TIP : Use "user1"/"password" for testing
+                    </p>
                     <vue-form-generator
                             :schema="schemaIdentifier"
                             :model="credentials"
@@ -20,6 +26,15 @@
                 <tab-content title="Authentification"
                              icon="ti-lock"
                              :before-change="afterAuthentTab">
+                    <p>
+                        Now provide your password. This way, you can generate a RSA keypair and propose a challenge response.
+                    </p>
+                    <p>
+                        DEBUG : Signature changes between calls because RSA encryption use a random nounce to avoid replay attacks
+                    </p>
+                    <p>
+                        TIP : Use "user1"/"password" for testing
+                    </p>
                     <vue-form-generator
                             :schema="schemaPassword"
                             :model="credentials"
@@ -28,11 +43,13 @@
             </form-wizard>
         </div>
         <div class="loader" v-if="isLoading"></div>
+        <div>{{errorMessage}}</div>
         <login-debugger
-                :keyDerivationOptions="keyDerivationOptions"
+                :keyDerivationOptions="passwordDerivatorParams"
                 :challenge="challenge"
                 :keypairRsa="keyPair"
-                :encodedSignature="encodedSignature"/>
+                :encodedSignature="encodedSignature"
+                :passwordHash="passwordHash"/>
     </div>
 </template>
 
@@ -68,17 +85,22 @@
           password:   null
         },
         isLoading: false,
+        errorMessage: null,
         challenge: {
           encoded64: null,
         },
-        keyDerivationOptions: {
-          encodedSalt:    null,
-          algorithm:      null,
-          iterations:     null,
-          message_digest: null
+        passwordDerivatorAlgorithm: null,
+        passwordDerivatorParams: {
+          encodedSalt:             null,
+          iterations:              null,
+          messageDigestAlgorithm:  null,
+          hashSize:                null,
+          keySize:                 null,
+          primeGeneratorAlgorithm: null,
         },
-        encodedSignature: null,
-        keyPair: null,
+        passwordHash:               null,
+        encodedSignature:           null,
+        keyPair:                    null,
         ...schemas
       }
     },
@@ -91,17 +113,29 @@
       validateIdentTab(){return this.$refs.identTabForm.validate()},
       validateAuthentTab(){return this.$refs.authentTabForm.validate()},
       afterIdentTab(){
+        this.errorMessage=null
         if(!this.validateIdentTab()){return false}
-        return api.login.retrieveAuthOptionsFor(this.credentials.id).then((response)=>{
-          this.keyDerivationOptions=response.keyDerivationOption;
-          this.challenge=response.challenge;
+        return api.login.retrieveAuthOptionsFor(this.credentials.identifier).then((response)=>{
+          this.passwordDerivatorAlgorithm = response.passwordDerivator.algorithm;
+          this.passwordDerivatorParams = response.passwordDerivator.params;
+          this.challenge = response.challenge;
           return true
+        },(errorMessage)=>{
+          this.errorMessage=errorMessage;
+          return false
         })
       },
       afterAuthentTab(){
         if(!this.validateAuthentTab()){return false}
         let _this = this;
-        let authManager = new AuthSessionManager(this.credentials.password, this.salt, this.challengeBytes);
+
+        let authManager = new AuthSessionManager(this.credentials.password, this.passwordDerivatorAlgorithm, this.passwordDerivatorParams );
+        console.log("authManager : ",authManager);
+
+        authManager.passwordHashPromise().then((hash) => {
+          _this.passwordHash=hash;
+        });
+
         authManager.keypairPromise().then((keypair) => {
           _this.keyPair=keypair;
         });

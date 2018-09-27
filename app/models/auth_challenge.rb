@@ -1,19 +1,19 @@
 class AuthChallenge
 
-  CHALLENGE_SIZE=24 #in bytes
+  CHALLENGE_SIZE=48 #in bytes
 
   include ActiveModel::Model
 
-  attr_accessor :user,
+  attr_accessor :identifier,
                 :challenge
 
   def encoded_challenge
     Base64.encode64(challenge).delete("\n")
   end
 
-  def self.generate_for(user)
+  def self.generate_for(identifier)
     new(
-      user: user,
+      identifier: identifier,
       challenge: random_challenge
     )
   end
@@ -22,18 +22,22 @@ class AuthChallenge
     "sha256"
   end
 
+  def to_h
+    {
+      encoded: encoded_challenge,
+      digest_algorithm: digest_algorithm,
+      expires_at: (DateTime.now+5.minutes).iso8601
+    }
+  end
+
   def verify(signature)
-    user.public_key.rsa_key.verify(new_digest, signature, challenge)
+    identifier.public_key.rsa_key.verify(new_digest, signature, challenge)
   end
 
   private
 
   def self.random_challenge
     SecureRandom.random_bytes(CHALLENGE_SIZE)
-  end
-
-  def new_digest
-    OpenSSL::Digest::SHA256.new
   end
 
 end

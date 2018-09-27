@@ -1,40 +1,61 @@
 import forge from 'node-forge'
-import PasswordDerivator from './password_derivator'
-import DeterministicRsaKeyPairGenerator
-  from './deterministic_rsa_key_pair_generator'
 
 class AuthSessionManager {
 
-  constructor(password, salt, challenge, initialisationVector, passwordDerivationParams = {}, rsaKeyPairGeneratorParams = {}) {
+  constructor(password, _algorithm, params) {
     this.password = password;
-    this.salt = salt;
-    this.challenge = challenge;
-    this.initialisationVector=initialisationVector;
-    this.passwordDerivationParams = passwordDerivationParams;
-    this.rsaKeyPairGeneratorParams = rsaKeyPairGeneratorParams;
+    this.params = params;
+  }
+
+  passwordHashPromise(){
+    if (this._passwordHashPromise) {
+      return this._passwordHashPromise
+    }
+    console.log("Set Hash");
+    let {password} = this;
+    let {encodedSalt, iterations, messageDigestAlgorithm, hashSize} = this.params;
+    this._passwordHashPromise = new Promise((resolve) => {
+      let salt = forge.util.decode64(encodedSalt);
+      let hash=forge.pkcs5.pbkdf2(password, salt, iterations, hashSize, messageDigestAlgorithm);
+      console.log("Hash : ", hash);
+      resolve(hash)
+    });
+    return this._passwordHashPromise
   }
 
   keypairPromise() {
-    let {passwordDerivationParams, rsaKeyPairGeneratorParams, password, salt} = this
+    let {keySize, primeGeneratorAlgorithm} = this.params;
     if (this._keypairPromise) {
       return this._keypairPromise
     }
-    ;
     console.log("Set keypairPromise");
-    this._keypairPromise = new Promise(function (resolve, _reject) {
-      console.time("generateKeyPair");
-      let kd = new PasswordDerivator(passwordDerivationParams);
-      let rsaGen = new DeterministicRsaKeyPairGenerator(rsaKeyPairGeneratorParams);
-
-      kd.getKey(password, salt, 512, function (seed) {
-        rsaGen.generateKeyPair(seed, function (keypair) {
-          console.log("resolve Promise with :", keypair);
-          console.timeEnd("generateKeyPair");
-          resolve(keypair);
-        })
+    this._keypairPromise = this.passwordHashPromise().then((seed)=>{
+      console.log("pnrgSeed :", seed);
+      let buffer=forge.util.createBuffer(seed, 'raw');
+      let prng = forge.random.createInstance();
+      prng.seedFileSync = function(needed) {
+        // get 'needed' number of random bytes from hash
+        return buffer.getBytes(needed);
+      };
+      return new Promise((resolve)=> {
+        console.time("generateKeyPair");
+        forge.pki.rsa.generateKeyPair({
+          bits:     keySize,
+          prng:      prng,
+          algorithm:  primeGeneratorAlgorithm,
+          workers:   -1
+        }, (_err, keypair) => {
+          console.log("KeyPair :",keypair);
+          resolve(keypair)
+        });
       });
 
+    }, function (reason) {
+      console.log(reason);
     });
+
+
+
     return this._keypairPromise;
   }
 

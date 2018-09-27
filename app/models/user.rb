@@ -1,10 +1,8 @@
 class User
   include Mongoid::Document
 
-  field :identifier, type: String
   field :name, type: String
 
-  field :password_derivation_options, type: Hash
-  embeds_one :public_key
+  embeds_one :credentials_entry, autobuild: true
 
 end
