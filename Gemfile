@@ -19,6 +19,8 @@ gem 'webpacker'
 # Database
 gem 'mongoid', '~> 7.0'
 
+gem "ed25519"
+
 # Background jobs
 gem "sidekiq", "~> 5.0.1"
 # Background jobs status

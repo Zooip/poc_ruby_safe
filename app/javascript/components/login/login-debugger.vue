@@ -9,7 +9,7 @@
         <div>
             <h3>key Derivation Options</h3>
             <p class="small">Received from server. Stored at last user password change</p>
-            <pre>{{keyDerivationOptionsJSON}}</pre>
+            <pre>{{keyDerivatorJSON}}</pre>
         </div>
         <div>
             <h3>Password derivated Hash</h3>
@@ -34,17 +34,14 @@
     name: "login-debugger",
     props:[
       "challenge",
-      "keyDerivationOptions",
+      "keyDerivator",
       "authManagerDebugOutput"
     ],
     computed: {
-      keyDerivationOptionsJSON(){return this.stringify(this.keyDerivationOptions)},
+      keyDerivatorJSON(){return this.stringify(this.keyDerivator)},
       challengeJSON(){return this.stringify(this.challenge)},
       keypairRsaJSON(){
-        return this.stringify({
-          privateKeyPEM: this.authManagerDebugOutput.keypair.privKeyPem,
-          publicKeyPEM: this.authManagerDebugOutput.keypair.pubKeyPem,
-        })
+        return this.stringify(this.authManagerDebugOutput.keypair)
       },
       encodedPasswordHash(){
         return this.authManagerDebugOutput.hash.encoded;

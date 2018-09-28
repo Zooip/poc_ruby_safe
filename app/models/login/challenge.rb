@@ -19,8 +19,8 @@ module Login
       }
     end
 
-    def verify(signature)
-      identifier.public_key.rsa_key.verify(build_digest, signature, challenge)
+    def digested_challenge
+      build_digest.digest(challenge)
     end
 
     def build_digest

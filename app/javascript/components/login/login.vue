@@ -16,7 +16,8 @@
                       Provide your ID so we can retrieve your key derivation parameters and assign you a challenge.
                     </p>
                     <p>
-                        TIP : Use "user1" for testing
+                        TIP : Use "user1" for RSA signature<br/>
+                        Use "user2" for Ed25519 signature (much faster but no encryption)
                     </p>
                     <vue-form-generator
                             :schema="schemaIdentifier"
@@ -46,7 +47,7 @@
         <div class="loader" v-if="isLoading"></div>
 
         <login-debugger
-                :keyDerivationOptions="passwordDerivatorParams"
+                :keyDerivator="passwordDerivator"
                 :challenge="challenge"
                 :authManagerDebugOutput="authManagerDebugOutput"/>
     </div>
@@ -79,24 +80,26 @@
     },
     data: function () {
       return {
-        credentials: {
+        credentials:            {
           identifier: null,
           password:   null
         },
-        isLoading: false,
-        errorMessage: null,
-        challenge: {
+        isLoading:              false,
+        errorMessage:           null,
+        challenge:              {
           value: null,
         },
-        encodedSignature:           null,
-        passwordDerivatorAlgorithm: null,
-        passwordDerivatorParams: {
-          encodedSalt:             null,
-          iterations:              null,
-          messageDigestAlgorithm:  null,
-          hashSize:                null,
-          keySize:                 null,
-          primeGeneratorAlgorithm: null,
+        encodedSignature:       null,
+        passwordDerivator:      {
+          algorithm: null,
+          params:    {
+            encodedSalt:             null,
+            iterations:              null,
+            messageDigestAlgorithm:  null,
+            hashSize:                null,
+            keySize:                 null,
+            primeGeneratorAlgorithm: null,
+          }
         },
         authManagerDebugOutput: {
           hash:      {
@@ -105,7 +108,6 @@
           },
           prng:      null,
           keypair:   {
-            value:      null,
             pubKeyPem:  null,
             privKeyPem: null
           },
@@ -130,8 +132,7 @@
         this.errorMessage=null;
         if(!this.validateIdentTab()){return false}
         return api.login.identify(this.credentials.identifier).then((response)=>{
-          this.passwordDerivatorAlgorithm = response.passwordDerivator.algorithm;
-          this.passwordDerivatorParams = response.passwordDerivator.params;
+          this.passwordDerivator= response.passwordDerivator;
           this.challenge = response.challenge;
           return true
         },(errorMessage)=>{
@@ -144,13 +145,14 @@
           return false
         }
         let _this = this;
-        this.errorMessage=null;
-        return new Promise((resolve) => {
-          let authManager = new AuthSessionManager(_this.credentials.password, _this.passwordDerivatorAlgorithm, _this.passwordDerivatorParams, _this.challenge);
-          console.log("authManager : ", authManager);
+        this.errorMessage = null;
 
-          authManager.signatureEncodedPromise().then((encodedSignature) => {
-            _this.authManagerDebugOutput = authManager.debugOutput;
+        let authManager = new AuthSessionManager(_this.credentials.password, _this.passwordDerivator, _this.challenge);
+        console.log("authManager : ", authManager);
+
+        return authManager.encodedSignaturePromise().then(
+          (encodedSignature) => {
+            _this.authManagerDebugOutput = authManager.signer.debugOutput;
 
             api.login.authentify({
               identifier:       _this.credentials.identifier,
@@ -158,15 +160,19 @@
               challenge:        _this.challenge.value
             }).then((status) => {
               alert(status)
-              resolve(true)
+              return (true)
             }, (errorMessage) => {
               _this.errorMessage = errorMessage;
-              resolve(false)
+              return (false)
             })
-          }, (error) => {
-            console.log("Error during Sign : ", error)
-            resolve(false)
-          });
+          },
+          (error) => {
+            console.log("Error during Sign : ", error);
+            return (false)
+          }
+        ).catch((error) => {
+          console.log("Error catched during Sign : ", error);
+          return (false)
         })
       }
     }
