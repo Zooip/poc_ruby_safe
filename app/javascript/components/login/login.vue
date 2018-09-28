@@ -1,11 +1,11 @@
 <template>
     <div>
-        <div id="login-wrapper">
+        <div id="login-wrapper" v-bind:class="errorMessage ? 'form-error' : 'form-ok'">
             <form-wizard
                     title="Login"
                     subtitle="PoC Challenge-Response Authentication"
                     color="#2f4b83"
-                    error-color="#2f4b83"
+                    error-color="#ae1221"
                     @on-loading="setLoading">
                 <tab-content
                         title="Identification"
@@ -16,7 +16,7 @@
                       Provide your ID so we can retrieve your key derivation parameters and assign you a challenge.
                     </p>
                     <p>
-                        TIP : Use "user1"/"password" for testing
+                        TIP : Use "user1" for testing
                     </p>
                     <vue-form-generator
                             :schema="schemaIdentifier"
@@ -30,10 +30,10 @@
                         Now provide your password. This way, you can generate a RSA keypair and propose a challenge response.
                     </p>
                     <p>
-                        DEBUG : Signature changes between calls because RSA encryption use a random nounce to avoid replay attacks
+                        DEBUG : KeyPair may take up to 20 secs to generate ... just wait ...
                     </p>
                     <p>
-                        TIP : Use "user1"/"password" for testing
+                        TIP : Use "password" for testing
                     </p>
                     <vue-form-generator
                             :schema="schemaPassword"
@@ -41,15 +41,14 @@
                             ref="authentTabForm"/>
                 </tab-content>
             </form-wizard>
+            <div class="error-message">{{errorMessage}}</div>
         </div>
         <div class="loader" v-if="isLoading"></div>
-        <div>{{errorMessage}}</div>
+
         <login-debugger
                 :keyDerivationOptions="passwordDerivatorParams"
                 :challenge="challenge"
-                :keypairRsa="keyPair"
-                :encodedSignature="encodedSignature"
-                :passwordHash="passwordHash"/>
+                :authManagerDebugOutput="authManagerDebugOutput"/>
     </div>
 </template>
 
@@ -87,8 +86,9 @@
         isLoading: false,
         errorMessage: null,
         challenge: {
-          encoded64: null,
+          value: null,
         },
+        encodedSignature:           null,
         passwordDerivatorAlgorithm: null,
         passwordDerivatorParams: {
           encodedSalt:             null,
@@ -98,62 +98,97 @@
           keySize:                 null,
           primeGeneratorAlgorithm: null,
         },
-        passwordHash:               null,
-        encodedSignature:           null,
-        keyPair:                    null,
+        authManagerDebugOutput: {
+          hash:      {
+            value:   null,
+            encoded: null
+          },
+          prng:      null,
+          keypair:   {
+            value:      null,
+            pubKeyPem:  null,
+            privKeyPem: null
+          },
+          signature: {
+            value:   null,
+            encoded: null
+          }
+        },
         ...schemas
       }
     },
     computed:{
       salt(){return this.keyDerivationOptions.encodedSalt&&forge.util.decode64(this.keyDerivationOptions.encodedSalt)},
       challengeBytes(){return this.challenge.encoded64&&forge.util.decode64(this.challenge.encoded64)},
+      classError(){return (!this.errorMessage ? "error-login" : null)},
     },
     methods:{
       setLoading(v){this.isLoading=v},
       validateIdentTab(){return this.$refs.identTabForm.validate()},
       validateAuthentTab(){return this.$refs.authentTabForm.validate()},
       afterIdentTab(){
-        this.errorMessage=null
+        this.errorMessage=null;
         if(!this.validateIdentTab()){return false}
-        return api.login.retrieveAuthOptionsFor(this.credentials.identifier).then((response)=>{
+        return api.login.identify(this.credentials.identifier).then((response)=>{
           this.passwordDerivatorAlgorithm = response.passwordDerivator.algorithm;
           this.passwordDerivatorParams = response.passwordDerivator.params;
           this.challenge = response.challenge;
           return true
         },(errorMessage)=>{
           this.errorMessage=errorMessage;
-          return false
+          return false;
         })
       },
-      afterAuthentTab(){
-        if(!this.validateAuthentTab()){return false}
+      afterAuthentTab() {
+        if (!this.validateAuthentTab()) {
+          return false
+        }
         let _this = this;
+        this.errorMessage=null;
+        return new Promise((resolve) => {
+          let authManager = new AuthSessionManager(_this.credentials.password, _this.passwordDerivatorAlgorithm, _this.passwordDerivatorParams, _this.challenge);
+          console.log("authManager : ", authManager);
 
-        let authManager = new AuthSessionManager(this.credentials.password, this.passwordDerivatorAlgorithm, this.passwordDerivatorParams );
-        console.log("authManager : ",authManager);
+          authManager.signatureEncodedPromise().then((encodedSignature) => {
+            _this.authManagerDebugOutput = authManager.debugOutput;
 
-        authManager.passwordHashPromise().then((hash) => {
-          _this.passwordHash=hash;
-        });
-
-        authManager.keypairPromise().then((keypair) => {
-          _this.keyPair=keypair;
-        });
-
-        return authManager.signaturePromise().then((signBytes) => {
-            _this.encodedSignature = forge.util.encode64(signBytes);
-            return true
-        });
+            api.login.authentify({
+              identifier:       _this.credentials.identifier,
+              encodedSignature: encodedSignature,
+              challenge:        _this.challenge.value
+            }).then((status) => {
+              alert(status)
+              resolve(true)
+            }, (errorMessage) => {
+              _this.errorMessage = errorMessage;
+              resolve(false)
+            })
+          }, (error) => {
+            console.log("Error during Sign : ", error)
+            resolve(false)
+          });
+        })
       }
     }
   }
 </script>
 
 <style scoped>
+
+    .error-message{
+        font-size: 1.1em;
+        text-align: center;
+        width: 100%;
+        color: #ae1221;
+    }
+
     #login-wrapper {
         max-width: 500px;
         margin: auto;
-        border: solid #2f4b83 10px;
+        border-style: solid;
+        border-width: 10px;
+        border-color: #2f4b83;
+
     }
 
     .fade-enter-active, .fade-leave-active {
@@ -164,6 +199,9 @@
     {
         opacity: 0;
     }
+
+
+
 
     /* This is a css loader. It's not related to vue-form-wizard */
     .loader,

@@ -5,4 +5,5 @@ Rails.application.routes.draw do
   root 'home#home'
 
   match 'login/identify', to: 'login#identify', via: [:post]
+  match 'login/authentify', to: 'login#authentify', via: [:post]
 end

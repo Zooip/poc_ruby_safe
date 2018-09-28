@@ -3,6 +3,9 @@ class User
 
   field :name, type: String
 
-  embeds_one :credentials_entry, autobuild: true
+  embeds_one :credentials, class_name: "Login::CredentialsEntry", autobuild: true
+
+  index({ "credentials.identifier" => 1 }, { unique: true })
+
 
 end

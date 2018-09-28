@@ -28,7 +28,8 @@ module Login
             hash_size:                 2048,
             key_Size:                  2048,
             prime_generator_algorithm: 'PRIMEINC'
-          )
+          ),
+          public_key: PublicKeys::NullRsa.new
         )
       end
 

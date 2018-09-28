@@ -35,21 +35,22 @@
     props:[
       "challenge",
       "keyDerivationOptions",
-      "keypairRsa",
-      "encodedSignature",
-      "passwordHash"
+      "authManagerDebugOutput"
     ],
     computed: {
       keyDerivationOptionsJSON(){return this.stringify(this.keyDerivationOptions)},
       challengeJSON(){return this.stringify(this.challenge)},
       keypairRsaJSON(){
         return this.stringify({
-          privateKeyPEM: this.keypairRsa&&this.keypairRsa.privateKey ? forge.pki.privateKeyToPem(this.keypairRsa.privateKey) : "",
-          publicKeyPEM: this.keypairRsa&&this.keypairRsa.publicKey ? forge.pki.publicKeyToPem(this.keypairRsa.publicKey) : "",
+          privateKeyPEM: this.authManagerDebugOutput.keypair.privKeyPem,
+          publicKeyPEM: this.authManagerDebugOutput.keypair.pubKeyPem,
         })
       },
       encodedPasswordHash(){
-        return this.passwordHash&&forge.util.encode64(this.passwordHash);
+        return this.authManagerDebugOutput.hash.encoded;
+      },
+      encodedSignature(){
+        return this.authManagerDebugOutput.signature.encoded;
       }
     },
     methods:{

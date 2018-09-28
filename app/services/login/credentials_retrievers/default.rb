@@ -6,7 +6,7 @@ module Login
       end
 
       def retrieve(identifier)
-        User.find_by('credentials_entry.identifier'=>identifier)&.credentials_entry
+        User.find_by('credentials.identifier'=>identifier)&.credentials
       end
 
     end

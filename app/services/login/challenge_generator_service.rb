@@ -23,7 +23,7 @@ module Login
     end
 
     def auth_challenge
-      AuthChallenge.generate_for(identifier)
+      Challenge.generate_for(identifier)
     end
 
     def render_hash
