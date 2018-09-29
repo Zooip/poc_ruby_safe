@@ -17,7 +17,7 @@
                     </p>
                     <p>
                         TIP : Use "user1" for RSA signature<br/>
-                        Use "user2" for Ed25519 signature (much faster but no encryption)
+                        Use "user2" for Ed25519 signature (much faster but don't provide encryption)
                     </p>
                     <vue-form-generator
                             :schema="schemaIdentifier"
@@ -119,11 +119,6 @@
         ...schemas
       }
     },
-    computed:{
-      salt(){return this.keyDerivationOptions.encodedSalt&&forge.util.decode64(this.keyDerivationOptions.encodedSalt)},
-      challengeBytes(){return this.challenge.encoded64&&forge.util.decode64(this.challenge.encoded64)},
-      classError(){return (!this.errorMessage ? "error-login" : null)},
-    },
     methods:{
       setLoading(v){this.isLoading=v},
       validateIdentTab(){return this.$refs.identTabForm.validate()},
@@ -159,7 +154,7 @@
               encodedSignature: encodedSignature,
               challenge:        _this.challenge.value
             }).then((status) => {
-              alert(status)
+              alert(status);
               return (true)
             }, (errorMessage) => {
               _this.errorMessage = errorMessage;

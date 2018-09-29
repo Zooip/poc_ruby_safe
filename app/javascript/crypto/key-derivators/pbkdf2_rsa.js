@@ -1,4 +1,8 @@
 import forge from 'node-forge'
+import KeypairWorker from 'worker-loader!./rsa_keypair_generator.worker';
+import PromiseWorker from 'promise-worker'
+import Worker from "./rsa_keypair_generator.worker";
+
 
 class Pbkdf2Rsa {
   constructor(params) {
@@ -24,23 +28,18 @@ class Pbkdf2Rsa {
     return forge.pkcs5.pbkdf2(password, salt, iterations, hashSize, messageDigestAlgorithm);
   }
 
-  buildPrngFormHash(hash) {
-    let buffer = forge.util.createBuffer(hash, 'raw');
-    let prng = forge.random.createInstance();
-    prng.seedFileSync = function (needed) {
-      // get 'needed' number of random bytes from hash
-      return buffer.getBytes(needed);
-      //return forge.util.fillString("a",needed)
-    };
-    return prng
-  }
+  buildKeypairPromise(hash) {
+    let {params} = this;
+    var worker = new KeypairWorker();
+    var promiseWorker = new PromiseWorker(worker);
 
-  buildKeypairFromPrng(prng) {
-    let {keySize, primeGeneratorAlgorithm} = this.params;
-    return forge.pki.rsa.generateKeyPair({
-      bits:      keySize,
-      prng:      prng,
-      algorithm: primeGeneratorAlgorithm
+    return promiseWorker.postMessage({seed:hash,params:params}).then(function (skp) {
+      return {
+        publicKey: forge.pki.publicKeyFromPem(skp.publicKeyPem),
+        privateKey: forge.pki.privateKeyFromPem(skp.privateKeyPem)
+      }
+    }).catch(function (error) {
+      console.log("something went wrong ...", error)
     });
   }
 
@@ -57,37 +56,33 @@ class Pbkdf2Rsa {
       let hash = _this.buildHash(password);
       console.timeEnd("buildHash");
 
-      console.time("buildPrngFormHash");
-      let prng = _this.buildPrngFormHash(hash);
-      console.timeEnd("buildPrngFormHash");
+      console.time("buildKeypair");
+      return _this.buildKeypairPromise(hash).then((keypair)=>{
+        console.timeEnd("buildKeypair");
 
-      console.time("buildKeypairFromPrng");
-      let keypair = _this.buildKeypairFromPrng(prng);
-      console.timeEnd("buildKeypairFromPrng");
+        console.time("signWithKeypair");
+        let signature = _this.signWithKeypair(keypair, challenge);
+        console.timeEnd("signWithKeypair");
 
-      console.time("signWithKeypair");
-      let signature = _this.signWithKeypair(keypair, challenge);
-      console.timeEnd("signWithKeypair");
+        let encodedSignature = forge.util.encode64(signature);
+        _this.debugOutput = {
+          hash:      {
+            value:   hash,
+            encoded: forge.util.encode64(hash)
+          },
+          keypair:   {
+            pubKeyPem:  forge.pki.publicKeyToPem(keypair.publicKey, 100000),
+            privKeyPem: forge.pki.privateKeyToPem(keypair.privateKey, 100000)
+          },
+          signature: {
+            value:   signature,
+            encoded: encodedSignature
+          }
+        };
 
-      let encodedSignature = forge.util.encode64(signature);
-      _this.debugOutput = {
-        hash:      {
-          value:   hash,
-          encoded: forge.util.encode64(hash)
-        },
-        prng:      prng,
-        keypair:   {
-          pubKeyPem:  forge.pki.publicKeyToPem(keypair.publicKey, 100000),
-          privKeyPem: forge.pki.privateKeyToPem(keypair.privateKey, 100000)
-        },
-        signature: {
-          value:   signature,
-          encoded: encodedSignature
-        }
-      };
-
-      console.log("AuthSessionManager debug output : ", _this.debugOutput);
-      resolve(encodedSignature);
+        console.log("AuthSessionManager debug output : ", _this.debugOutput);
+        resolve(encodedSignature);
+      })
     })
   }
 }
