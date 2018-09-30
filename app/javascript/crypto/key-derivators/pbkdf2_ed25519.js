@@ -27,7 +27,7 @@ class Pbkdf2Ed25519 extends PasswordDerivator {
     let _this = this;
     return _this.keypairPromise().then((keypair)=>{
 
-      let md = forge.md.sha256.create();
+      let md = forge.md[challenge.digestAlgorithm].create();
       md.update(challenge.value, 'utf8');
       let signature = forge.pki.ed25519.sign({
         md: md,

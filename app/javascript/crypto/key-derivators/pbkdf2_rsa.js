@@ -30,7 +30,7 @@ class Pbkdf2Rsa extends PasswordDerivator {
     return new Promise(function (resolve) {
       console.log(_this);
       return _this.keypairPromise(password).then((keypair)=>{
-        let md = forge.md.sha256.create();
+        let md = forge.md[challenge.digestAlgorithm].create();
         md.update(challenge.value, 'utf8');
         let signature = keypair.privateKey.sign(md);
         let encodedSignature = forge.util.encode64(signature);
