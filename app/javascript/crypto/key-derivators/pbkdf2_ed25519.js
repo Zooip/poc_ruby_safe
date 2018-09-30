@@ -1,42 +1,41 @@
 import forge from 'node-forge'
-import passwordDerivatorRef from './key-derivator-ref'
+import PasswordDerivator from './password-derivator'
+import KeypairWorker from "./rsa_keypair_generator.worker";
+import PromiseWorker from "promise-worker";
 
-class Pbkdf2Ed25519 {
-  constructor(params) {
-    const _this=this;
-    this.params = {};
-    const keys = [
-      "encodedSalt",
-      "iterations",
-      "messageDigestAlgorithm"
-    ];
+class Pbkdf2Ed25519 extends PasswordDerivator {
 
-    keys.forEach(function (key) {
-      _this.params[key] = params[key]
+  keypairPromise() {
+    let _this=this;
+    console.log(_this);
+    return _this.memoise("keypairPromise",()=>{
+      let {password,params} = _this;
+
+      return new Promise((resolve) => {
+        let {encodedSalt, iterations, messageDigestAlgorithm} = params;
+        let salt = forge.util.decode64(encodedSalt);
+        let hash = forge.pkcs5.pbkdf2(password, salt, iterations, 32, messageDigestAlgorithm);
+
+        resolve(forge.pki.ed25519.generateKeyPair({
+          seed: hash
+        }));
+      })
     })
   }
 
-  encodedSignaturePromise(password, challenge) {
+  encodedChallengeSignaturePromise(challenge) {
     let _this = this;
-    return new Promise(function (resolve, reject) {
-      console.time("buildHash");
-      let hash = _this.buildHash(password);
-      console.timeEnd("buildHash");
+    return _this.keypairPromise().then((keypair)=>{
 
-      console.time("buildKeypair");
-      let keypair = _this.buildKeypair(hash);
-      console.timeEnd("buildKeypair");
-
-      console.time("signWithKeypair");
-      let signature = _this.signWithKeypair(keypair, challenge);
-      console.timeEnd("signWithKeypair");
+      let md = forge.md.sha256.create();
+      md.update(challenge.value, 'utf8');
+      let signature = forge.pki.ed25519.sign({
+        md: md,
+        privateKey: keypair.privateKey
+      });
 
       let encodedSignature = signature.toString('base64');
       _this.debugOutput = {
-        hash:      {
-          value:   hash,
-          encoded: forge.util.encode64(hash)
-        },
         keypair:   {
           pubKey64:   keypair.publicKey.toString('base64'),
           privKey64: keypair.privateKey.toString('base64'),
@@ -48,29 +47,8 @@ class Pbkdf2Ed25519 {
       };
 
       console.log("AuthSessionManager debug output : ", _this.debugOutput);
-      resolve(encodedSignature);
+      return encodedSignature;
     })
-  }
-
-  buildHash(password) {
-    let {encodedSalt, iterations, messageDigestAlgorithm} = this.params;
-    let salt = forge.util.decode64(encodedSalt);
-    return forge.pkcs5.pbkdf2(password, salt, iterations, 32, messageDigestAlgorithm);
-  }
-
-  buildKeypair(hash) {
-    return forge.pki.ed25519.generateKeyPair({
-      seed: hash
-    });
-  }
-
-  signWithKeypair(keypair, challenge){
-    let md = forge.md.sha256.create();
-    md.update(challenge.value, 'utf8');
-    return forge.pki.ed25519.sign({
-      md: md,
-      privateKey: keypair.privateKey
-    });
   }
 }
 

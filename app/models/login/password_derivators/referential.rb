@@ -6,12 +6,13 @@ module Login
   
       attr_reader :ref
   
-      def add(key, klass)
-        @ref[sanitize_key(key)] = klass
+      def add(key, klass_name)
+        Rails.logger.error "Register #{key} to #{klass_name}"
+        @ref[sanitize_key(key)] = klass_name
       end
   
       def get(key)
-        @ref[sanitize_key(key)]
+        @ref[sanitize_key(key)].constantize
       end
   
       private

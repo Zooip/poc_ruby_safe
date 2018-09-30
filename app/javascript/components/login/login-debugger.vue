@@ -12,11 +12,6 @@
             <pre>{{keyDerivatorJSON}}</pre>
         </div>
         <div>
-            <h3>Password derivated Hash</h3>
-            <p class="small">Derivated from password with derivation options</p>
-            <pre>{{encodedPasswordHash}}</pre>
-        </div>
-        <div>
             <h3>Key pair</h3>
             <p class="small">Derivated from Password and Salt by front-end</p>
             <pre>{{keypairRsaJSON}}</pre>
@@ -42,9 +37,6 @@
       challengeJSON(){return this.stringify(this.challenge)},
       keypairRsaJSON(){
         return this.stringify(this.authManagerDebugOutput.keypair)
-      },
-      encodedPasswordHash(){
-        return this.authManagerDebugOutput.hash.encoded;
       },
       encodedSignature(){
         return this.authManagerDebugOutput.signature.encoded;

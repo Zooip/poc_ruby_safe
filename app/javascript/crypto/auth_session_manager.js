@@ -1,6 +1,6 @@
 import forge from 'node-forge'
 
-import passwordDerivatorRef from './key-derivators/key-derivator-ref'
+import passwordDerivatorsRef from './key-derivators/password-derivators-ref'
 
 
 class AuthSessionManager {
@@ -10,11 +10,13 @@ class AuthSessionManager {
     this.algorithm=passwordDerivator;
     this.challenge=challenge;
 
-    this.signer= new passwordDerivatorRef[passwordDerivator.algorithm](passwordDerivator.params)
+    this.signer= new passwordDerivatorsRef[passwordDerivator.algorithm](this.password,passwordDerivator.params)
+
+    console.log("Signer: ", this.signer)
   }
 
   encodedSignaturePromise() {
-    return this.signer.encodedSignaturePromise(this.password, this.challenge)
+    return this.signer.encodedChallengeSignaturePromise(this.challenge)
   }
 }
 
