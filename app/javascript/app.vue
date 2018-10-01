@@ -1,16 +1,18 @@
 <template>
   <div id="app">
-    <login></login>
+    <router-view></router-view>
   </div>
 </template>
 
 <script>
 
   import Login from "./components/login/login.vue"
+  import Registration from "./components/registration/registration"
 
   export default {
     components: {
-      Login
+      Login,
+      Registration
     },
   }
 </script>

@@ -61,7 +61,7 @@
 
   import api from "../../api"
 
-  import * as schemas from "./login-schemas"
+  import schemas from "./login-schemas"
 
   import forge from 'node-forge'
 
@@ -187,7 +187,8 @@
         max-width: 500px;
         margin: auto;
         border-style: solid;
-        border-width: 10px;
+        border-width: 5px;
+        border-radius: 5px;
         border-color: #2f4b83;
 
     }
@@ -200,9 +201,6 @@
     {
         opacity: 0;
     }
-
-
-
 
     /* This is a css loader. It's not related to vue-form-wizard */
     .loader,
